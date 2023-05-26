@@ -1,0 +1,93 @@
+---
+title: "luciferase2"
+author: "Julia GB"
+date: "2023-05-01"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r Load package}
+library(tibble)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(readr)
+library(readxl)
+library(RColorBrewer)
+library(wesanderson)
+```
+
+
+```{r data 1 import}
+#1 Data importation 
+
+lucife1 <- read_csv("Desktop/Nano-GloJULIAplate1.csv")
+lucife1
+lucife1new <-lucife1 %>% select(WellPosition, RLU) %>% mutate(id="lucife1", virus=ifelse(WellPosition==c("A:1","A:2","A:3","A:4","A:5","A:6","A:7","B:1","B:2","B:3","B:4","B:5","B:6","B:7","C:1","C:2","C:3","C:4","C:5","C:6","C:7"), "rTOSV",ifelse(WellPosition==c("D:1","D:2","D:3","D:4","D:5","D:6","D:7","E:1","E:2","E:3","E:4","E:5","E:6","E:7","F:1","F:2","F:3","F:4","F:5","F:6","F:7"), "TOSV CBiT NSs",NA))) 
+lucife1new
+
+#2 Data importation 
+
+lucife2 <- read_csv("Desktop/Nano-GloJULIAplate2.csv")
+lucife2
+lucife2new <- lucife2 %>% select(WellPosition, RLU,) %>% mutate(id="lucife2", virus=ifelse(WellPosition==c("A:1","A:2","A:3","A:4","A:5","A:6","A:7","B:1","B:2","B:3","B:4","B:5","B:6","B:7","C:1","C:2","C:3","C:4","C:5","C:6","C:7"),"TOSV NBiT NSs",ifelse(WellPosition==c("D:1","D:2","D:3","D:4","D:5","D:6","D:7","E:1","E:2","E:3","E:4","E:5","E:6","E:7","F:1","F:2","F:3","F:4","F:5","F:6","F:7"), "TOSV CTBiT NSs",NA)))
+lucife2new
+
+# Join the two imported data frames
+
+luciferase <- rbind(lucife1new, lucife2new)
+luciferase
+
+# Creation of the variable time corresponding to the timepoints of infection 
+
+luciferase2<-luciferase %>%  mutate(time = as.double(case_when(
+    grepl("1$", WellPosition) ~ "0",
+    grepl("2$", WellPosition) ~ "2",
+    grepl("3$", WellPosition) ~ "9",
+    grepl("4$", WellPosition) ~ "24",
+    grepl("5$", WellPosition) ~ "31",
+    grepl("6$", WellPosition) ~ "49",
+    grepl("7$", WellPosition) ~ "73",
+    TRUE ~ NA_character_
+  )))
+
+luciferase2
+
+# Calculate the average, the standard deviation, the standard error and the population by grouping virus names and timepoints 
+
+lucife_avg <- luciferase2 %>% group_by(virus, time) %>% summarise(RLU_avg = mean(RLU),
+                                                                  RLU_sd = sd(RLU),
+                                                                  RLU_se = sqrt(RLU_sd),
+                                                                  n = n())
+lucife_avg
+```
+
+```{r graphique}
+
+# Plot the results
+
+g2 <- lucife_avg %>% ggplot(aes(x=time, y=RLU_avg, group= virus, shape = virus)) +
+  scale_y_log10(limits = c(2*10^2, 2*10^6)) +
+  geom_line(aes(color = virus), size = 1) +
+  geom_errorbar(aes(ymin= ifelse(RLU_avg-RLU_sd < 0, 0, RLU_avg-RLU_sd), 
+                    ymax=RLU_avg+RLU_sd, color = virus), size = 0.7, width=0.7) +
+  geom_point( aes(color = virus, shape = virus), size = 2) +
+  scale_color_manual(values = c("#87CEEB", "#4169E1", "#191970", "#00BFAB")) +
+  scale_shape_manual(values = c(15, 16, 17, 8)) +
+  scale_x_continuous(breaks = seq(0, 70, by = 5)) +
+  labs(x = "Timepoint (h)", y = "Log (Average luciferase output)", color = "Virus", shape = "Virus") +
+  theme_bw() +
+  theme(axis.title.x = element_text(size = 16, face = "bold", vjust = 0.5, margin = margin(t = 10, r = 20, b = 0, l = 0)),
+        axis.title.y = element_text(size = 16, face = "bold", vjust = 3, margin = margin(t = 0, r = 5, b = 0, l = 0)),
+        axis.text.x = element_text(size = 14, face = 'bold'),
+        axis.text.y = element_text(size = 14, face = 'bold'),
+        title = element_text(size = 18, face = "bold"),
+        strip.text = element_text(face = "bold", size = rel(1)),
+        legend.position="right",
+        legend.title= element_text(size = 16, face = "bold"),
+        legend.spacing.x = unit(0.5, 'cm'),
+        plot.margin = unit(c(1, 1, 1, 1), "cm")) 
+g2
+```
+
+
